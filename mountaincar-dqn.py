@@ -7,6 +7,8 @@ import random
 import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
+import sys
+import json
 
 import torch
 import torch.nn as nn
@@ -177,7 +179,7 @@ for i_episode in range(num_episodes):
         action = select_action(state)
         observation, reward, terminated, truncated, _ = env.step(action.item())
         reward = torch.tensor([reward], device=device)
-        done = terminated or truncated
+        done = terminated or t > 1000
 
         if terminated:
             next_state = None
@@ -244,3 +246,6 @@ if record_policy is not None:
 env.close()
 env_gui.close()
 
+if len(sys.argv) >= 2:
+    dict = policy_net.state_dict()
+    torch.save(dict,f"{sys.argv[0]}_{record_duration}.mod")
