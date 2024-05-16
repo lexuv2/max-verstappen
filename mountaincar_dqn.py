@@ -115,7 +115,7 @@ def plot_duration(show_result: bool = False) -> None:
         means = torch.cat((torch.zeros(99), means))
         plt.plot(means.numpy())
 
-    plt.pause(0.001)
+    plt.pause(0.05)
 
 # Training loop
 
@@ -161,90 +161,92 @@ def optimize_model() -> None:
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
 
-if torch.cuda.is_available():
-    num_episodes = 10000
-else:
-    num_episodes = 1000
-use_rewards = False
 
-record_episode = -1
-record_policy = None
-record_duration = 1e9
+if __name__ == '__main__':
+    if torch.cuda.is_available():
+        num_episodes = 10000
+    else:
+        num_episodes = 1000
+    use_rewards = False
 
-for i_episode in range(num_episodes):
-    state, info = env.reset(seed=i_episode)
-    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-    for t in count():
-        action = select_action(state)
-        observation, reward, terminated, truncated, _ = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
-        done = terminated or t > 1000
+    record_episode = -1
+    record_policy = None
+    record_duration = 1e9
 
-        if terminated:
-            next_state = None
-            if t < record_duration:
-                record_episode = i_episode
-                record_duration = t
-                record_policy = policy_net.state_dict()
-        else:
-            next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+    for i_episode in range(num_episodes):
+        state, info = env.reset(seed=i_episode)
+        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        for t in count():
+            action = select_action(state)
+            observation, reward, terminated, truncated, _ = env.step(action.item())
+            reward = torch.tensor([reward], device=device)
+            done = terminated or t > 1000
 
-        # Store the transition in memory
-        memory.push(state, action, next_state, reward)
+            if terminated:
+                next_state = None
+                if t < record_duration:
+                    record_episode = i_episode
+                    record_duration = t
+                    record_policy = policy_net.state_dict()
+            else:
+                next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
 
-        # Move to the next state
-        state = next_state
+            # Store the transition in memory
+            memory.push(state, action, next_state, reward)
 
-        # Perform one step of the optimization (on the target network)
-        optimize_model()
+            # Move to the next state
+            state = next_state
 
-        # Soft update of the target network's weights
-        target_net_state_dict = target_net.state_dict()
-        policy_net_state_dict = policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (1 - TAU)
-        target_net.load_state_dict(target_net_state_dict)
+            # Perform one step of the optimization (on the target network)
+            optimize_model()
 
-        if done:
-            episode_durations.append(t + 1)
-            plot_duration()
-            break
+            # Soft update of the target network's weights
+            target_net_state_dict = target_net.state_dict()
+            policy_net_state_dict = policy_net.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (1 - TAU)
+            target_net.load_state_dict(target_net_state_dict)
 
-print('Complete')
-plot_duration(show_result=True)
-plt.ioff()
-plt.show()
+            if done:
+                episode_durations.append(t + 1)
+                plot_duration()
+                break
 
-# Play the game
+    print('Complete')
+    plot_duration(show_result=True)
+    plt.ioff()
+    plt.show()
 
-gui = True
-env_gui = gym.make(game_name, render_mode='human' if gui else None)
+    # Play the game
 
-def play_game(seed: int = None) -> None:
-    state, _ = env_gui.reset(seed=seed)
-    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-    for t in count():
-        action = select_action(state)
-        observation, _, terminated, truncated, _ = env_gui.step(action.item())
-        if terminated or truncated:
-            break
-        state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
-    print(f'Terminated: {terminated}, Truncated: {truncated}, Steps: {t}')
-    if gui:
-        input('Press Enter to continue...')
+    gui = True
+    env_gui = gym.make(game_name, render_mode='human' if gui else None)
 
-play_game()
+    def play_game(seed: int = None) -> None:
+        state, _ = env_gui.reset(seed=seed)
+        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        for t in count():
+            action = select_action(state)
+            observation, _, terminated, truncated, _ = env_gui.step(action.item())
+            if terminated or truncated:
+                break
+            state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+        print(f'Terminated: {terminated}, Truncated: {truncated}, Steps: {t}')
+        if gui:
+            input('Press Enter to continue...')
 
-if record_policy is not None:
-    print(f'Replaying the best episode ({record_episode})')
-    backup_policy = policy_net.state_dict()
-    policy_net.load_state_dict(record_policy)
-    play_game(seed=record_episode)
-    policy_net.load_state_dict(backup_policy)
+    play_game()
 
-env.close()
-env_gui.close()
+    if record_policy is not None:
+        print(f'Replaying the best episode ({record_episode})')
+        backup_policy = policy_net.state_dict()
+        policy_net.load_state_dict(record_policy)
+        play_game(seed=record_episode)
+        policy_net.load_state_dict(backup_policy)
 
-if len(sys.argv) >= 2:
-    dict = policy_net.state_dict()
-    torch.save(dict,f"{sys.argv[0]}_{record_duration}.mod")
+    env.close()
+    env_gui.close()
+
+    if len(sys.argv) >= 2:
+        dict = policy_net.state_dict()
+        torch.save(dict,f"{sys.argv[1]}.mod")

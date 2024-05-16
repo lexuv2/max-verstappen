@@ -1,7 +1,5 @@
-swig
 matplotlib
 torch
 ipykernel
 gymnasium
 gymnasium[classic-control]
-gymnasium[box2d]
