@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
 import sys
-import json
 
 import torch
 import torch.nn as nn
