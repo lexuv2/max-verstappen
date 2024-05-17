@@ -2,13 +2,13 @@ import gymnasium as gym
 from itertools import count
 import numpy as np
 import matplotlib.pyplot as plt
-from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
 poly_deg = 1
-pop_size = 200
+pop_size = 500
 parents_size = 20
 mutation_percent = 30
-threads = 24
-threading=False #not properly implemented
+threads = 8
+threading=True #not properly implemented
 save_best = True
 
 
@@ -29,7 +29,7 @@ def r():
     return np.random.uniform(-1,1)
 
 def play_game(coefs,seed: int = None,):
-    env_gui = gym.make(game_name, render_mode=None)
+    env_gui = gym.make(game_name, render_mode='human' if gui else None)
     state, _ = env_gui.reset(seed=seed)
     position, velocity = state
     last_position = position
@@ -44,9 +44,10 @@ def play_game(coefs,seed: int = None,):
         last_position = position
         if terminated or truncated:
             break
+    env_gui.close()
     if t < 199:
-        #print(f'Terminated: {terminated}, Truncated: {truncated}, Steps: {t}')
-        return ((speed_sum/t)+(t/200)/2,coefs)
+        print(f'Terminated: {terminated}, Truncated: {truncated}, Steps: {t}')
+        return ((200/t),coefs)
     return (speed_sum/t,coefs)
 
 def random_coefs():
@@ -60,7 +61,7 @@ plt.ion()
 epoch = 0
 best_of_best = 0
 best_of_best_coefs = []
-
+pool = Pool(threads)
 while True:
     epoch += 1
     results = []
@@ -77,7 +78,7 @@ while True:
                 best_of_best_coefs = x
             results.append((x,fit)) 
     else:
-        pool = ThreadPool(processes=threads)
+        
         for result in pool.map(play_game, population):
             fit,x = result
             if fit > best_fit:
@@ -113,6 +114,9 @@ while True:
                 x[i][j] += (r()/100)*mutation_percent
     print(f'Best fit: {best_fit}')
     print(f'Best coefs: {best_coefs}')
+    print("Best tested: ")
+    env_gui = gym.make(game_name, render_mode=None)
+    play_game(best_coefs)
 
     plt.plot(epoch,best_fit,'ro')
     plt.pause(0.05)
