@@ -249,4 +249,4 @@ if __name__ == '__main__':
 
     if len(sys.argv) >= 2:
         dict = policy_net.state_dict()
-        torch.save(dict,f"{sys.argv[1]}.mod")
+        torch.save(dict,f"{sys.argv[1]}.pt")
