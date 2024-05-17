@@ -1,6 +1,4 @@
-from mountaincar_dqn import select_action, policy_net, device
 import sys
-import torch
 import gymnasium as gym
 from itertools import count
 import numpy as np

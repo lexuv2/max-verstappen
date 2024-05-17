@@ -61,6 +61,7 @@ plt.ion()
 epoch = 0
 best_of_best = 0
 best_of_best_coefs = []
+best_of_best_saved = 0
 pool = Pool(threads)
 while True:
     epoch += 1
@@ -122,7 +123,9 @@ while True:
     plt.pause(0.05)
     ##replay the best
     if save_best and (epoch % 10) == 0:
-        np.save(f"best_iwicki_polynomial{best_of_best}.npy",best_of_best_coefs)
+        if best_of_best > best_of_best_saved:
+            np.save(f"best_iwicki_polynomial_{epoch}_{round(best_of_best, 3)}.npy",best_of_best_coefs)
+            best_of_best_saved = best_of_best
     if (epoch % 10) == 0:
         env_gui = gym.make(game_name, render_mode='human')
         print("TESTING BEST:")
