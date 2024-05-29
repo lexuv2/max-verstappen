@@ -8,5 +8,6 @@ This repository contains the code for the Mountain Car problem in the OpenAI Gym
 
 # Implemented methods
 
+- [Q-Learning](q_learning/)
 - [Deep Q-Network](dqn/)
 - [Iwicki polynomial](iwicki_polynomial/)
